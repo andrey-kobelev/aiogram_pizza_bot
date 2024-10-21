@@ -1,0 +1,1 @@
+from .bot_cmds_list import PRIVATE # noqa
