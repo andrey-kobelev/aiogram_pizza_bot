@@ -31,7 +31,9 @@ def clean_text(text: str):
 @user_group_router.edited_message()
 @user_group_router.message()
 async def check_and_clean_bad_words(message: types.Message):
-    if RESTRICTED_WORDS.intersection(clean_text(message.text.lower()).split()):
+    if RESTRICTED_WORDS.intersection(
+        clean_text(message.text.lower()).split()
+    ):
         # Написать пользователю сообщение перед удалением
         await message.reply(
             f'{message.from_user.first_name}, соблюдайте порядок в чате!'

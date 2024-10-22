@@ -2,6 +2,8 @@ from aiogram import types, Router, F
 from aiogram.filters import CommandStart, Command, or_f
 
 from app.filters.chat_types import ChatTypeFilter
+from app.keyboards import reply
+from app.common import bot_cmds_list as cmd
 
 
 # Список разрешенных типов чатов.
@@ -19,10 +21,18 @@ user_private_router.message.filter(
 # будет реагировать на /start нужным образом.
 @user_private_router.message(CommandStart())
 async def start_cmd(message: types.Message):
-    await message.answer('Отвечаю на сообщение /start')
+    await message.answer(
+        text='Отвечаю на сообщение /start',
+        reply_markup=reply.start_kb
+    )
 
 
-@user_private_router.message(or_f(Command('menu'), F.text.lower() == 'меню'))
+@user_private_router.message(
+    or_f(
+        Command(cmd.MENU.command),
+        F.text.lower() == 'меню'
+    )
+)
 async def menu_cmd(message: types.Message):
     await message.answer('Наше меню')
 
@@ -45,18 +55,18 @@ async def menu_cmd(message: types.Message):
     (F.text.lower().contains('достав')) |
     (F.text.lower().contains('варианты доставки'))
 )
-@user_private_router.message(Command('shipping'))
+@user_private_router.message(Command(cmd.SHIPPING.command))
 async def shipping_cmd(message: types.Message):
     await message.answer('Варианты доставки')
 
 
 @user_private_router.message(F.text.lower() == 'о нас')
-@user_private_router.message(Command('about'))
+@user_private_router.message(Command(cmd.ABOUT.command))
 async def about_cmd(message: types.Message):
     await message.answer('О нас')
 
 
 @user_private_router.message(F.text.lower() == 'варианты оплаты')
-@user_private_router.message(Command('payment'))
+@user_private_router.message(Command(cmd.PAYMENT.command))
 async def payment_cmd(message: types.Message):
     await message.answer('Варианты оплаты')
