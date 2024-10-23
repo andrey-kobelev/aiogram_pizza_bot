@@ -1,6 +1,7 @@
 from string import punctuation
 
-from aiogram import types, Router
+from aiogram import types, Router, Bot
+from aiogram.filters import Command
 
 from app.filters.chat_types import ChatTypeFilter
 
@@ -21,6 +22,22 @@ user_group_router = Router()
 user_group_router.message.filter(
     ChatTypeFilter(CHAT_TYPES)
 )
+
+
+# Секретная команда
+@user_group_router.message(Command('admin'))
+async def get_admins(message: types.Message, bot: Bot):
+    # Делаем запрос на сервер телеграмма
+    admins = await bot.get_chat_administrators(message.chat.id)
+    admins = [
+        member.user.id
+        for member in admins
+        if member.status == 'creator' or member.status == 'administrator'
+    ]
+    bot.admins = admins
+    # Можно удалить сразу сообщение, чтобы никто не увидел
+    if message.from_user.id in admins:
+        await message.delete()
 
 
 def clean_text(text: str):

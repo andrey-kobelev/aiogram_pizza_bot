@@ -17,6 +17,7 @@ ALLOWED_UPDATES = ['message', 'edited_message']
 
 # Класс самого бота - инициализация.
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
+bot.admins = []
 
 # Обрабатывает все апдейты из сервера - всё что касается бота.
 # Отвечает за фильтрацию сообщений полученных с сервера.

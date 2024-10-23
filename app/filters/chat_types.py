@@ -1,5 +1,5 @@
 from aiogram.filters import Filter
-from aiogram import types
+from aiogram import types, Bot
 
 
 # Наследуемся от базового класса Filter.
@@ -17,3 +17,11 @@ class ChatTypeFilter(Filter):
     async def __call__(self, message: types.Message) -> bool:
         # Тут проверяем что тип message имеется в списке наших типов
         return message.chat.type in self.chat_types
+
+
+class IsAdmin(Filter):
+    def __init__(self) -> None:
+        pass
+
+    async def __call__(self, message: types.Message, bot: Bot):
+        return message.from_user.id in bot.admins
