@@ -1,9 +1,10 @@
 from aiogram import types, Router, F
 from aiogram.filters import CommandStart, Command, or_f
+from aiogram.utils.formatting import as_list, as_marked_section, Bold
 
 from app.filters.chat_types import ChatTypeFilter
 from app.keyboards import reply
-from app.common import bot_cmds_list as cmd
+from app.common import constants as cmd
 
 
 # Список разрешенных типов чатов.
@@ -23,7 +24,14 @@ user_private_router.message.filter(
 async def start_cmd(message: types.Message):
     await message.answer(
         text='Отвечаю на сообщение /start',
-        reply_markup=reply.start_kb
+        # Вторым параметром можно передать клавиатуру.
+        # reply_markup=reply.start_kb
+        # ____________________________
+        # Второй вид клавиатуры передается по другому
+        reply_markup=reply.start_kb_3.as_markup(
+            resize_keyboard=True,
+            input_field_placeholder=cmd.INPUT_TEXT
+        )
     )
 
 
@@ -34,7 +42,11 @@ async def start_cmd(message: types.Message):
     )
 )
 async def menu_cmd(message: types.Message):
-    await message.answer('Наше меню')
+    await message.answer(
+        text='Наше меню',
+        # При переходе к меню удалить клавиатуру.
+        reply_markup=reply.remove_start_kb
+    )
 
 # ВАЖНА ПОСЛЕДОВАТЕЛЬНОСТЬ ФИЛЬТРАЦИИ СОБЫТИЙ!
 # Если echo разместить перед start_cmd, то start_cmd никогда не выполнится!!!
@@ -57,16 +69,70 @@ async def menu_cmd(message: types.Message):
 )
 @user_private_router.message(Command(cmd.SHIPPING.command))
 async def shipping_cmd(message: types.Message):
-    await message.answer('Варианты доставки')
+    shipping_options = [
+        'Курьер',
+        'Самовывоз',
+        'Покушаю у вас',
+    ]
+    forbidden = [
+        'Почта', 'Голуби',
+    ]
+    # Список маркированных объектов с разделителем sep.
+    text = as_list(
+        as_marked_section(
+            Bold(f'{cmd.SHIPPING.description}:'),
+            *shipping_options,
+            marker='* '
+        ),
+        as_marked_section(
+            Bold('Нельзя:'),
+            *forbidden,
+            marker='X '
+        ),
+        sep='\n__________________\n'
+    )
+    await message.answer(
+        text=text.as_html(),
+    )
 
 
 @user_private_router.message(F.text.lower() == 'о нас')
 @user_private_router.message(Command(cmd.ABOUT.command))
 async def about_cmd(message: types.Message):
-    await message.answer('О нас')
+    await message.answer(
+        text='О нас',
+        reply_markup=reply.contact_location_kb
+    )
 
 
 @user_private_router.message(F.text.lower() == 'варианты оплаты')
 @user_private_router.message(Command(cmd.PAYMENT.command))
 async def payment_cmd(message: types.Message):
-    await message.answer('Варианты оплаты')
+    payment_options = [
+        'Картой в боте',
+        'При получении карта/кеш',
+        'В заведении'
+    ]
+
+    # Вернется класс текста
+    text = as_marked_section(
+        # Title. Текст сделается жирным
+        Bold(f'{cmd.PAYMENT.description}:'),
+        # Body
+        *payment_options,
+        marker='* '
+    )
+    # Нужно указать как именно мы будем парсить текст.
+    await message.answer(text.as_html())
+
+
+@user_private_router.message(F.contact)
+async def get_contact(message: types.Message):
+    await message.answer('Номер получен')
+    await message.answer(str(message.contact.phone_number))
+
+
+@user_private_router.message(F.location)
+async def get_location(message: types.Message):
+    await message.answer('Локация получена')
+    await message.answer(str(message.location))

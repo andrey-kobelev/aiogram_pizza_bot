@@ -3,6 +3,7 @@ import os
 
 import dotenv
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.types import BotCommandScopeAllPrivateChats
 
 from handlers import ROUTERS
@@ -15,7 +16,7 @@ TOKEN = os.getenv('BOT_TOKEN')
 ALLOWED_UPDATES = ['message', 'edited_message']
 
 # Класс самого бота - инициализация.
-bot = Bot(token=TOKEN)
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 
 # Обрабатывает все апдейты из сервера - всё что касается бота.
 # Отвечает за фильтрацию сообщений полученных с сервера.
