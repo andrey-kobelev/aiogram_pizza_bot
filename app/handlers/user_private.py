@@ -1,7 +1,9 @@
 from aiogram import types, Router, F
 from aiogram.filters import CommandStart, Command, or_f
 from aiogram.utils.formatting import as_list, as_marked_section, Bold
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud.product import product_crud
 from app.filters.chat_types import ChatTypeFilter
 from app.keyboards import reply
 from app.common import constants as cmd
@@ -41,7 +43,23 @@ async def start_cmd(message: types.Message):
         F.text.lower() == 'меню'
     )
 )
-async def menu_cmd(message: types.Message):
+async def menu_cmd(message: types.Message, session: AsyncSession):
+    products = await product_crud.get_multi(session=session)
+    # products = '\n'.join([
+    #     f'ID: {product.id}\n'
+    #     f'Название: {product.name}\n'
+    #     f'Описание: {product.description}\n'
+    #     for product in products
+    # ])
+    for product in products:
+        await message.answer_photo(
+            product.image,
+            caption=(
+                f'<strong>{product.name}</strong>\n'
+                f'{product.description}\n'
+                f'Стоимость: {round(product.price, 2)}'
+            )
+        )
     await message.answer(
         text='Наше меню',
         # При переходе к меню удалить клавиатуру.

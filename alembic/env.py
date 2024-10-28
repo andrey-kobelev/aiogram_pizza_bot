@@ -18,7 +18,7 @@ dotenv.load_dotenv('.env')
 # access to the values within the .ini file in use.
 config = context.config
 # Установим для переменной sqlalchemy.url значение из нашего .env файла.
-config.set_main_option('sqlalchemy.url', os.environ['DATABASE_URL'])
+config.set_main_option('sqlalchemy.url', os.environ['DATABASE_URL_AS_ALEMBIC'])
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -62,7 +62,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

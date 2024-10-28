@@ -13,6 +13,6 @@ class BaseFields(Base):
     create_date: Mapped[DateTime] = mapped_column(
         DateTime, index=True, default=func.now()
     )
-    close_date: Mapped[DateTime] = mapped_column(
+    update_date: Mapped[DateTime] = mapped_column(
         DateTime, default=func.now(), onupdate=func.now()
     )

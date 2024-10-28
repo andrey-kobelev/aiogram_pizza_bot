@@ -3,15 +3,14 @@ import os
 import dotenv
 from sqlalchemy import Column, Integer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import declared_attr, sessionmaker, as_declarative
+from sqlalchemy.orm import declared_attr, sessionmaker, DeclarativeBase
 
 dotenv.load_dotenv()
 
-DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASE_URL = os.getenv('DATABASE_URL_AS_BOT')
 
 
-@as_declarative()
-class Base:
+class Base(DeclarativeBase):
 
     @declared_attr
     def __tablename__(cls):
@@ -32,3 +31,9 @@ AsyncSessionLocal = sessionmaker(
 async def get_async_session():
     async with AsyncSessionLocal() as async_session:
         yield async_session
+
+
+# Что-бы вручную создать БД
+async def create_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

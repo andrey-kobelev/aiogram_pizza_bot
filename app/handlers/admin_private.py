@@ -2,19 +2,19 @@ from aiogram import F, Router, types
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.chat_types import ChatTypeFilter, IsAdmin
+from app.keyboards.inline import get_callback_btns
 from app.keyboards.reply import get_keyboard
-
+from app.crud.product import product_crud
 
 admin_router = Router()
 admin_router.message.filter(ChatTypeFilter(['private']), IsAdmin())
 
 ADMIN_BUTTONS = [
     'Добавить товар',
-    'Изменить товар',
-    'Удалить товар',
-    'Я так, просто посмотреть зашел',
+    'Список товаров',
 ]
 BACK_CANCEL_BUTTONS = [
     'назад',
@@ -24,7 +24,6 @@ BACK_CANCEL_BUTTONS = [
 ADMIN_KB = get_keyboard(
     *ADMIN_BUTTONS,
     placeholder='Выберите действие',
-    sizes=(2, 1, 1),
 )
 BACK_CANCEL_KB = get_keyboard(
     *BACK_CANCEL_BUTTONS,
@@ -33,26 +32,62 @@ BACK_CANCEL_KB = get_keyboard(
 
 
 @admin_router.message(Command('admin'))
-async def add_product(message: types.Message):
+async def admin_zone(message: types.Message):
     await message.answer(
         text='Что хотите сделать?',
         reply_markup=ADMIN_KB
     )
 
 
-@admin_router.message(F.text == 'Я так, просто посмотреть зашел')
-async def starring_at_product(message: types.Message):
-    await message.answer('ОК, вот список товаров')
+@admin_router.message(F.text == 'Список товаров')
+async def get_products_list(message: types.Message, session: AsyncSession):
+    products = await product_crud.get_multi(session=session)
+    # products = '\n'.join([
+    #     f'ID: {product.id}\n'
+    #     f'Название: {product.name}\n'
+    #     f'Описание: {product.description}\n'
+    #     for product in products
+    # ])
+    for product in products:
+        await message.answer_photo(
+            product.image,
+            caption=(
+                f'<strong>{product.name}</strong>\n'
+                f'{product.description}\n'
+                f'Стоимость: {round(product.price, 2)}'
+            ),
+            # Передается как обычная клавиатура
+            reply_markup=get_callback_btns(
+                btns={
+                    # Передаем айди каждого продукта,
+                    # потом, в другом хендлере (с событием CallbackQuery)
+                    # нужно будет распарсить айди.
+                    'Удалить': f'delete_{product.id}',
+                    'Изменить': f'change_{product.id}',
+                }
+            )
+        )
+    await message.answer('ОК, вот список товаров:')
 
 
-@admin_router.message(F.text == 'Изменить товар')
-async def change_product(message: types.Message):
-    await message.answer('ОК, вот список товаров')
+@admin_router.callback_query(F.data.startswith('delete_'))
+async def delete_product(
+        callback: types.CallbackQuery,
+        session: AsyncSession
+):
+    product_id = int(callback.data.split('_')[-1])
+    await product_crud.remove(obj_id=product_id, session=session)
 
+    # Данная конструкция нужна для того,
+    # что-бы по центру отобразился полупрозрачный
+    # всплывающий текст "Товар удален".
+    # Нужно указывать ОБЯЗАТЕЛЬНО, так как нужно
+    # серверу дать сигнал о том, что мы приняли callback_query!
+    # PS: Скобки можно оставить пустыми.
+    await callback.answer('Товар удален')
 
-@admin_router.message(F.text == 'Удалить товар')
-async def delete_product(message: types.Message):
-    await message.answer('Выберите товар(ы) для удаления')
+    # А здесь просто придет сообщение в личку, что товар удален.
+    await callback.message.answer('Товар удален')
 
 
 # КОД НИЖЕ ДЛЯ МАШИНЫ СОСТОЯНИЙ (FSM)
@@ -89,7 +124,7 @@ async def add_product_fsm(message: types.Message, state: FSMContext):
 # '*' - обозначает любое состояние пользователя.
 @admin_router.message(StateFilter('*'), Command('отмена'))
 @admin_router.message(StateFilter('*'), F.text.casefold() == 'отмена')
-async def cancel(message: types.Message, state: FSMContext) -> None:
+async def cancel_fsm(message: types.Message, state: FSMContext) -> None:
     # Сохраним текущее состояние в переменную.
     current_state = state.get_state()
     # Если у пользователя нет никакого состояния ..
@@ -106,7 +141,7 @@ async def cancel(message: types.Message, state: FSMContext) -> None:
 
 @admin_router.message(StateFilter('*'), Command('назад'))
 @admin_router.message(StateFilter('*'), F.text.casefold() == 'назад')
-async def back(message: types.Message, state: FSMContext) -> None:
+async def back_fsm(message: types.Message, state: FSMContext) -> None:
     current_state = await state.get_state()
     if current_state == AddProduct.name:
         await message.answer(
@@ -130,7 +165,7 @@ async def back(message: types.Message, state: FSMContext) -> None:
 # 2) Если пользователь в состоянии AddProduct.name и ввел текст,
 # то продолжаем FSM
 @admin_router.message(AddProduct.name, F.text)
-async def add_name(message: types.Message, state: FSMContext):
+async def add_name_fsm(message: types.Message, state: FSMContext):
     # Записываем name из предыдущего шага
     await state.update_data(name=message.text)
     await message.answer(
@@ -143,7 +178,7 @@ async def add_name(message: types.Message, state: FSMContext):
 # Если вместо текста будет другое событие,
 # то выполнится этот хендлер, но состояние останется прежним.
 @admin_router.message(AddProduct.name)
-async def fix_name(message: types.Message):
+async def fix_name_fsm(message: types.Message):
     await message.reply(
         text=(
             'Название товара было введено некорректно, '
@@ -155,7 +190,7 @@ async def fix_name(message: types.Message):
 # 3) Если пользователь в состоянии AddProduct.description и ввел текст,
 # то продолжаем FSM
 @admin_router.message(AddProduct.description, F.text)
-async def add_description(message: types.Message, state: FSMContext):
+async def add_description_fsm(message: types.Message, state: FSMContext):
     # Записываем description
     await state.update_data(description=message.text)
     await message.answer(
@@ -166,7 +201,7 @@ async def add_description(message: types.Message, state: FSMContext):
 
 
 @admin_router.message(AddProduct.description)
-async def fix_description(message: types.Message):
+async def fix_description_fsm(message: types.Message):
     await message.reply(
         text=(
             'Описание товара было введено некорректно, '
@@ -178,7 +213,7 @@ async def fix_description(message: types.Message):
 # 4) Если пользователь в состоянии AddProduct.price и ввел текст,
 # то продолжаем FSM
 @admin_router.message(AddProduct.price, F.text)
-async def add_price(message: types.Message, state: FSMContext):
+async def add_price_fsm(message: types.Message, state: FSMContext):
     # Записываем price
     await state.update_data(price=message.text)
     await message.answer(
@@ -189,7 +224,7 @@ async def add_price(message: types.Message, state: FSMContext):
 
 
 @admin_router.message(AddProduct.price)
-async def fix_price(message: types.Message):
+async def fix_price_fsm(message: types.Message):
     await message.reply(
         text=(
             'Цена товара была введена некорректно, '
@@ -201,7 +236,11 @@ async def fix_price(message: types.Message):
 # 5) Если пользователь в состоянии AddProduct.image и загрузил фото,
 # то продолжаем FSM
 @admin_router.message(AddProduct.image, F.photo)
-async def add_image(message: types.Message, state: FSMContext):
+async def add_image_fsm(
+        message: types.Message,
+        state: FSMContext,
+        session: AsyncSession
+):
     # Записываем в словарь фото.
     # photo[-1] - означает самое высокое качество,
     # так как на серверах хранится несколько вариантов фото.
@@ -213,14 +252,15 @@ async def add_image(message: types.Message, state: FSMContext):
     )
     # Теперь полученные данные можно куда-нибудь сохранить.
     data = await state.get_data()
-    await message.answer(str(data))
+    data['price'] = float(data['price'])
+    await product_crud.create(obj_in=data, session=session)
     # Когда пользователь прошел все пункты -
     # очистить состояние пользователя и удалить все данные из машины состояния!
     await state.clear()
 
 
 @admin_router.message(AddProduct.image)
-async def fix_image(message: types.Message):
+async def fix_image_fsm(message: types.Message):
     await message.reply(
         text=(
             'Некорректный тип изображения, '

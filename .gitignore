@@ -132,3 +132,4 @@ dmypy.json
 .idea
 
 pizza_store_bot.db
+app/pizza_store_bot.db
