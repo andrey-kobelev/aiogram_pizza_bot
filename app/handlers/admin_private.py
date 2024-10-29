@@ -1,5 +1,5 @@
 from aiogram import F, Router, types
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command, StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from app.keyboards.inline import get_callback_btns
 from app.keyboards.reply import get_keyboard
 from app.crud.product import product_crud
 
+
 admin_router = Router()
 admin_router.message.filter(ChatTypeFilter(['private']), IsAdmin())
 
@@ -16,19 +17,39 @@ ADMIN_BUTTONS = [
     'Добавить товар',
     'Список товаров',
 ]
-BACK_CANCEL_BUTTONS = [
+MANAGEMENT_BUTTONS = [
     'назад',
     'отмена',
+    'пропустить'
 ]
 
 ADMIN_KB = get_keyboard(
     *ADMIN_BUTTONS,
     placeholder='Выберите действие',
 )
-BACK_CANCEL_KB = get_keyboard(
-    *BACK_CANCEL_BUTTONS,
+FSM_MANAGEMENT_KB = get_keyboard(
+    *MANAGEMENT_BUTTONS,
     placeholder='Введите данные о товаре',
+    sizes=(2, 1)
 )
+
+
+class AddProduct(StatesGroup):
+    # Каждый пункт это состояние на котором
+    # может находиться каждый пользователь (?).
+    name = State()
+    description = State()
+    price = State()
+    image = State()
+
+    change_product_id = None
+
+    texts = {
+        'AddProduct:name': 'Введите название заново:',
+        'AddProduct:description': 'Введите описание заново:',
+        'AddProduct:price': 'Введите стоимость заново:',
+        'AddProduct:image': 'Этот стейт последний, поэтому...',
+    }
 
 
 @admin_router.message(Command('admin'))
@@ -42,12 +63,6 @@ async def admin_zone(message: types.Message):
 @admin_router.message(F.text == 'Список товаров')
 async def get_products_list(message: types.Message, session: AsyncSession):
     products = await product_crud.get_multi(session=session)
-    # products = '\n'.join([
-    #     f'ID: {product.id}\n'
-    #     f'Название: {product.name}\n'
-    #     f'Описание: {product.description}\n'
-    #     for product in products
-    # ])
     for product in products:
         await message.answer_photo(
             product.image,
@@ -89,22 +104,25 @@ async def delete_product(
     # А здесь просто придет сообщение в личку, что товар удален.
     await callback.message.answer('Товар удален')
 
-
 # КОД НИЖЕ ДЛЯ МАШИНЫ СОСТОЯНИЙ (FSM)
-class AddProduct(StatesGroup):
-    # Каждый пункт это состояние на котором
-    # может находиться каждый пользователь (?).
-    name = State()
-    description = State()
-    price = State()
-    image = State()
 
-    texts = {
-        'AddProduct:name': 'Введите название заново:',
-        'AddProduct:description': 'Введите описание заново:',
-        'AddProduct:price': 'Введите стоимость заново:',
-        'AddProduct:image': 'Этот стейт последний, поэтому...',
-    }
+
+@admin_router.callback_query(StateFilter(None), F.data.startswith('change_'))
+async def change_product(
+        callback: types.CallbackQuery,
+        state: FSMContext,
+        # session: AsyncSession
+):
+    product_id = int(callback.data.split('_')[-1])
+    # product = await product_crud.get(obj_id=product_id, session=session)
+    AddProduct.change_product_id = product_id
+    await callback.answer()
+    await callback.message.answer(
+        text='Введите название товара',
+        reply_markup=FSM_MANAGEMENT_KB
+    )
+    # Нужно указать в какое состояние нужно стать
+    await state.set_state(AddProduct.name)
 
 
 # 1) FSM начнется, если у пользователя
@@ -114,7 +132,7 @@ class AddProduct(StatesGroup):
 async def add_product_fsm(message: types.Message, state: FSMContext):
     await message.answer(
         text='Введите название товара',
-        reply_markup=BACK_CANCEL_KB
+        reply_markup=FSM_MANAGEMENT_KB
     )
     # Нужно указать в какое состояние нужно стать
     await state.set_state(AddProduct.name)
@@ -131,6 +149,8 @@ async def cancel_fsm(message: types.Message, state: FSMContext) -> None:
     if current_state is None:
         # Завершаем работу хендлера.
         return
+    if AddProduct.change_product_id:
+        AddProduct.change_product_id = None
     # В ином случае очищаем данные и убираем все состояния.
     await state.clear()
     await message.answer(
@@ -152,7 +172,6 @@ async def back_fsm(message: types.Message, state: FSMContext) -> None:
     previous = None
     for step in AddProduct.__all_states__:
         if step.state == current_state:
-            print(f'{previous=} {current_state=} {step=} {step.state=}')
             await state.set_state(previous)
             await message.answer(
                 'Вы вернулись к прошлому шагу '
@@ -164,10 +183,16 @@ async def back_fsm(message: types.Message, state: FSMContext) -> None:
 
 # 2) Если пользователь в состоянии AddProduct.name и ввел текст,
 # то продолжаем FSM
-@admin_router.message(AddProduct.name, F.text)
+@admin_router.message(
+    AddProduct.name,
+    or_f(F.text.strip().lower() == 'пропустить', F.text)
+)
 async def add_name_fsm(message: types.Message, state: FSMContext):
-    # Записываем name из предыдущего шага
-    await state.update_data(name=message.text)
+    if 'пропустить' in message.text.lower():
+        pass
+    else:
+        # Записываем name из предыдущего шага
+        await state.update_data(name=message.text)
     await message.answer(
         text='Введите описание товара'
     )
@@ -189,10 +214,16 @@ async def fix_name_fsm(message: types.Message):
 
 # 3) Если пользователь в состоянии AddProduct.description и ввел текст,
 # то продолжаем FSM
-@admin_router.message(AddProduct.description, F.text)
+@admin_router.message(
+    AddProduct.description,
+    or_f(F.text.strip().lower() == 'пропустить', F.text)
+)
 async def add_description_fsm(message: types.Message, state: FSMContext):
-    # Записываем description
-    await state.update_data(description=message.text)
+    if 'пропустить' in message.text.lower():
+        pass
+    else:
+        # Записываем description
+        await state.update_data(description=message.text)
     await message.answer(
         text='Введите стоимость товара'
     )
@@ -212,10 +243,16 @@ async def fix_description_fsm(message: types.Message):
 
 # 4) Если пользователь в состоянии AddProduct.price и ввел текст,
 # то продолжаем FSM
-@admin_router.message(AddProduct.price, F.text)
+@admin_router.message(
+    AddProduct.price,
+    or_f(F.text.strip().lower() == 'пропустить', F.text)
+)
 async def add_price_fsm(message: types.Message, state: FSMContext):
-    # Записываем price
-    await state.update_data(price=message.text)
+    if 'пропустить' in message.text.lower():
+        pass
+    else:
+        # Записываем price
+        await state.update_data(price=float(message.text))
     await message.answer(
         text='Загрузите изображение товара'
     )
@@ -235,25 +272,40 @@ async def fix_price_fsm(message: types.Message):
 
 # 5) Если пользователь в состоянии AddProduct.image и загрузил фото,
 # то продолжаем FSM
-@admin_router.message(AddProduct.image, F.photo)
+@admin_router.message(
+    AddProduct.image,
+    or_f(F.text.strip().lower() == 'пропустить', F.photo)
+)
 async def add_image_fsm(
         message: types.Message,
         state: FSMContext,
         session: AsyncSession
 ):
-    # Записываем в словарь фото.
-    # photo[-1] - означает самое высокое качество,
-    # так как на серверах хранится несколько вариантов фото.
-    # К каждому изображению ТГ присваивает уникальные id
-    await state.update_data(image=message.photo[-1].file_id)
+    if message.text and 'пропустить' in message.text.lower():
+        pass
+    else:
+        # Записываем в словарь фото.
+        # photo[-1] - означает самое высокое качество,
+        # так как на серверах хранится несколько вариантов фото.
+        # К каждому изображению ТГ присваивает уникальные id
+        await state.update_data(image=message.photo[-1].file_id)
     await message.answer(
-        text='Товар добавлен',
+        text='Товар добавлен/изменен',
         reply_markup=ADMIN_KB
     )
     # Теперь полученные данные можно куда-нибудь сохранить.
     data = await state.get_data()
-    data['price'] = float(data['price'])
-    await product_crud.create(obj_in=data, session=session)
+    print()
+    print(data)
+    print()
+    if AddProduct.change_product_id:
+        await product_crud.update(
+            obj_id=int(AddProduct.change_product_id),
+            data=data, session=session
+        )
+        AddProduct.change_product_id = None
+    else:
+        await product_crud.create(obj_in=data, session=session)
     # Когда пользователь прошел все пункты -
     # очистить состояние пользователя и удалить все данные из машины состояния!
     await state.clear()
