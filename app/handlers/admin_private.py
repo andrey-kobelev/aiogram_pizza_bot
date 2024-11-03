@@ -196,6 +196,9 @@ async def add_name_fsm(message: types.Message, state: FSMContext):
     await message.answer(
         text='Введите описание товара'
     )
+    print()
+    print(f'{AddProduct.change_product_id=} {message.from_user.username}')
+    print()
     # Меняем состояние на description
     await state.set_state(AddProduct.description)
 
