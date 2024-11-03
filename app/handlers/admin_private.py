@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.filters.chat_types import ChatTypeFilter, IsAdmin
 from app.keyboards.inline import get_callback_btns
 from app.keyboards.reply import get_keyboard
-from app.crud.product import product_crud
+from app.crud import product_crud
 
 
 admin_router = Router()

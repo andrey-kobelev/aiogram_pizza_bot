@@ -4,13 +4,10 @@ import os
 import dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import BotCommandScopeAllPrivateChats
 
 from handlers import ROUTERS
-from common import PRIVATE
 from middlewares.db import DBSession
 from core.db import AsyncSessionLocal
-# from core.db import create_db
 
 
 dotenv.load_dotenv()
@@ -53,12 +50,6 @@ async def main():
     # await bot.delete_my_commands(
     #     scope=BotCommandScopeAllPrivateChats()
     # )
-
-    # Здесь прописана настройка отображения меню в приватных чатах.
-    await bot.set_my_commands(
-        commands=PRIVATE,
-        scope=BotCommandScopeAllPrivateChats()
-    )
 
     # Здесь бот начнет слушать сервер ТГ,
     # и спрашивать у него о наличии обновлений.
