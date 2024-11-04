@@ -1,22 +1,16 @@
 import os
 
 import dotenv
-from sqlalchemy import Column, Integer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import declared_attr, sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker
+
+from app.models import Base
+from app.crud import category_crud, banner_crud
+from app.common.texts_for_db import categories, description_for_info_pages
 
 dotenv.load_dotenv()
 
 DATABASE_URL = os.getenv('DATABASE_URL_AS_BOT')
-
-
-class Base(DeclarativeBase):
-
-    @declared_attr
-    def __tablename__(cls):
-        return cls.__name__.lower()
-
-    id = Column(Integer, primary_key=True)
 
 
 engine = create_async_engine(DATABASE_URL, echo=True)
@@ -37,3 +31,9 @@ async def get_async_session():
 async def create_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def import_data():
+    async with AsyncSessionLocal() as session:
+        await category_crud.create_categories(session=session, categories=categories)
+        await banner_crud.create_multiple(session=session, obj_in=description_for_info_pages)

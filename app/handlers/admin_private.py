@@ -5,18 +5,13 @@ from aiogram.fsm.state import StatesGroup, State
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.chat_types import ChatTypeFilter, IsAdmin
-from app.keyboards.inline import get_callback_btns
-from app.keyboards.reply import get_keyboard
-from app.crud import product_crud
+from app.keyboards import get_keyboard, get_callback_btns
+from app.crud import product_crud, category_crud, banner_crud
 
 
 admin_router = Router()
 admin_router.message.filter(ChatTypeFilter(['private']), IsAdmin())
 
-ADMIN_BUTTONS = [
-    'Добавить товар',
-    'Список товаров',
-]
 MANAGEMENT_BUTTONS = [
     'назад',
     'отмена',
@@ -24,8 +19,11 @@ MANAGEMENT_BUTTONS = [
 ]
 
 ADMIN_KB = get_keyboard(
-    *ADMIN_BUTTONS,
-    placeholder='Выберите действие',
+    "Добавить товар",
+    "Ассортимент",
+    "Добавить/Изменить баннер",
+    placeholder="Выберите действие",
+    sizes=(2,),
 )
 FSM_MANAGEMENT_KB = get_keyboard(
     *MANAGEMENT_BUTTONS,
@@ -39,6 +37,7 @@ class AddProduct(StatesGroup):
     # может находиться каждый пользователь (?).
     name = State()
     description = State()
+    category = State()
     price = State()
     image = State()
 
@@ -60,18 +59,27 @@ async def admin_zone(message: types.Message):
     )
 
 
-@admin_router.message(F.text == 'Список товаров')
+@admin_router.message(F.text == 'Ассортимент')
 async def get_products_list(message: types.Message, session: AsyncSession):
-    products = await product_crud.get_multi(session=session)
+    categories = await category_crud.get_multi(session=session)
+    btns = get_callback_btns(
+        btns={category.name: f'category_{category.id}' for category in categories}
+    )
+    await message.answer("Выберите категорию", reply_markup=btns)
+
+
+@admin_router.callback_query(F.data.startswith('category_'))
+async def get_products_of_some_category(callback: types.CallbackQuery, session: AsyncSession):
+    category_id = int(callback.data.split('_')[1])
+    products = await product_crud.get_multi(session=session, category_id=category_id)
     for product in products:
-        await message.answer_photo(
+        await callback.message.answer_photo(
             product.image,
             caption=(
                 f'<strong>{product.name}</strong>\n'
                 f'{product.description}\n'
                 f'Стоимость: {round(product.price, 2)}'
             ),
-            # Передается как обычная клавиатура
             reply_markup=get_callback_btns(
                 btns={
                     # Передаем айди каждого продукта,
@@ -82,7 +90,8 @@ async def get_products_list(message: types.Message, session: AsyncSession):
                 }
             )
         )
-    await message.answer('ОК, вот список товаров:')
+    await callback.answer()
+    await callback.message.answer('ОК, вот список товаров: ⏫')
 
 
 @admin_router.callback_query(F.data.startswith('delete_'))
@@ -103,6 +112,53 @@ async def delete_product(
 
     # А здесь просто придет сообщение в личку, что товар удален.
     await callback.message.answer('Товар удален')
+
+################# Микро FSM для загрузки/изменения баннеров ############################
+
+class AddBanner(StatesGroup):
+    name = State()
+    image = State()
+
+
+@admin_router.message(StateFilter(None), F.text == 'Добавить/Изменить баннер')
+async def update_banner(message: types.Message, state: FSMContext, session: AsyncSession):
+    pages = {page.name: str(page.id) for page in await banner_crud.get_multi(session=session)}
+    await message.answer(
+        'Выберите имя баннера:',
+        reply_markup=get_callback_btns(btns=pages)
+    )
+    await state.set_state(AddBanner.name)
+
+
+@admin_router.callback_query(AddBanner.name, F.data.regexp(r'^[\d]+'))
+async def get_banner_for_change(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    banner_id = int(callback.data)
+    await state.update_data(banner_id=banner_id)
+    banner = await banner_crud.get(obj_id=banner_id, session=session)
+    await callback.answer()
+    await callback.message.answer(
+        f"Отправьте фото для баннера {banner.name}."
+    )
+    await state.set_state(AddBanner.image)
+
+
+@admin_router.message(AddBanner.image, F.photo)
+async def add_banner_image(message: types.Message, state: FSMContext, session: AsyncSession):
+    await state.update_data(image=message.photo[-1].file_id)
+    data = await state.get_data()
+    await banner_crud.update(obj_id=data.pop('banner_id'), data=data, session=session)
+    await message.answer("Баннер добавлен/изменен.")
+    await state.clear()
+
+
+# ловим некоррекный ввод
+@admin_router.message(AddBanner.image)
+async def fix_banner_image(message: types.Message, state: FSMContext):
+    await message.answer("Отправьте фото баннера или отмена")
+
+#########################################################################################
+
+
 
 # КОД НИЖЕ ДЛЯ МАШИНЫ СОСТОЯНИЙ (FSM)
 
@@ -221,17 +277,20 @@ async def fix_name_fsm(message: types.Message):
     AddProduct.description,
     or_f(F.text.strip().lower() == 'пропустить', F.text)
 )
-async def add_description_fsm(message: types.Message, state: FSMContext):
+async def add_description_fsm(message: types.Message, state: FSMContext, session: AsyncSession):
     if 'пропустить' in message.text.lower():
         pass
     else:
         # Записываем description
         await state.update_data(description=message.text)
+
+    categories = await category_crud.get_multi(session=session)
+    categories_keyboard = get_callback_btns(btns={category.name: str(category.id) for category in categories})
     await message.answer(
-        text='Введите стоимость товара'
+        text='Выберите категорию товара', reply_markup=categories_keyboard
     )
-    # Меняем состояние на price
-    await state.set_state(AddProduct.price)
+    # Меняем состояние на category
+    await state.set_state(AddProduct.category)
 
 
 @admin_router.message(AddProduct.description)
@@ -244,7 +303,25 @@ async def fix_description_fsm(message: types.Message):
     )
 
 
-# 4) Если пользователь в состоянии AddProduct.price и ввел текст,
+# 4) Ловим callback выбора категории
+@admin_router.callback_query(AddProduct.category)
+async def add_category(callback: types.CallbackQuery, state: FSMContext , session: AsyncSession):
+    if int(callback.data) in [category.id for category in await category_crud.get_multi(session=session)]:
+        await callback.answer()
+        await state.update_data(category_id=int(callback.data))
+        await callback.message.answer('Теперь введите цену товара.')
+        await state.set_state(AddProduct.price)
+    else:
+        await callback.message.answer('Выберите катеорию из кнопок.')
+        await callback.answer()
+
+#Ловим любые некорректные действия, кроме нажатия на кнопку выбора категории
+@admin_router.message(AddProduct.category)
+async def category_choice2(message: types.Message, state: FSMContext):
+    await message.answer("'Выберите катеорию из кнопок.'")
+
+
+# 5) Если пользователь в состоянии AddProduct.price и ввел текст,
 # то продолжаем FSM
 @admin_router.message(
     AddProduct.price,
@@ -273,7 +350,7 @@ async def fix_price_fsm(message: types.Message):
     )
 
 
-# 5) Если пользователь в состоянии AddProduct.image и загрузил фото,
+# 6) Если пользователь в состоянии AddProduct.image и загрузил фото,
 # то продолжаем FSM
 @admin_router.message(
     AddProduct.image,

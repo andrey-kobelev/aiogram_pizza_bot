@@ -14,11 +14,11 @@ class CRUDCart(CRUDBase):
             user_id: int,
             product_id: int
     ):
-        query = select(Cart).where(
-            Cart.user_id == user_id,
+        query = select(self.model).where(
+            self.model.user_id == user_id,
             Cart.product_id == product_id
         ).options(
-            joinedload(Cart.product))
+            joinedload(self.model.product))
         cart = await session.execute(query)
         cart = cart.scalar()
         if cart:
@@ -26,7 +26,7 @@ class CRUDCart(CRUDBase):
             await session.commit()
             return cart
         else:
-            session.add(Cart(
+            session.add(self.model(
                 user_id=user_id,
                 product_id=product_id,
                 quantity=1
@@ -38,8 +38,8 @@ class CRUDCart(CRUDBase):
             session: AsyncSession,
             user_id
     ):
-        query = select(Cart).filter(
-            Cart.user_id == user_id
+        query = select(self.model).filter(
+            self.model.user_id == user_id
         ).options(joinedload(Cart.product))
         result = await session.execute(query)
         return result.scalars().all()
@@ -50,9 +50,9 @@ class CRUDCart(CRUDBase):
             user_id: int,
             product_id: int
     ):
-        query = delete(Cart).where(
-            Cart.user_id == user_id,
-            Cart.product_id == product_id
+        query = delete(self.model).where(
+            self.model.user_id == user_id,
+            self.model.product_id == product_id
         )
         await session.execute(query)
         await session.commit()
@@ -63,11 +63,11 @@ class CRUDCart(CRUDBase):
             user_id: int,
             product_id: int
     ):
-        query = select(Cart).where(
-            Cart.user_id == user_id,
+        query = select(self.model).where(
+            self.model.user_id == user_id,
             Cart.product_id == product_id
         ).options(
-            joinedload(Cart.product))
+            joinedload(self.model.product))
         cart = await session.execute(query)
         cart = cart.scalar()
 

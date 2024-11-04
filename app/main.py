@@ -7,7 +7,7 @@ from aiogram.client.default import DefaultBotProperties
 
 from handlers import ROUTERS
 from middlewares.db import DBSession
-from core.db import AsyncSessionLocal
+from core.db import AsyncSessionLocal, import_data
 
 
 dotenv.load_dotenv()
@@ -28,12 +28,15 @@ dispatcher = Dispatcher()
 dispatcher.include_routers(*ROUTERS)
 
 
-async def on_startup_func(bot):
+async def on_startup_func(bot: Bot):
     # await create_db()
+    print('Datas are importing..')
+    await import_data()
+    print('Datas were imported.')
     print('Запустили бот')
 
 
-async def on_shutdown_func(bot):
+async def on_shutdown_func(bot: Bot):
     print('Завершили бот')
 
 

@@ -5,7 +5,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base
+from app.models.base import Base
 
 
 NAME_LENGTH = 150
@@ -34,5 +34,5 @@ class BaseNameField(Base):
 class BaseImageDescriptionFields(Base):
     __abstract__ = True
 
-    image: Mapped[str] = mapped_column(String(IMAGE_LENGTH))
-    description: Mapped[str] = mapped_column(Text)
+    image: Mapped[str] = mapped_column(String(IMAGE_LENGTH), nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=True)

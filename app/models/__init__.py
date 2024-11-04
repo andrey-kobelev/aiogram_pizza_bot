@@ -1,4 +1,4 @@
-from .abstract_models import BaseDateTimeFields # noqa
+from .base import Base # noqa
 from .product import Product # noqa
 from .category import Category # noqa
 from .user import User # noqa

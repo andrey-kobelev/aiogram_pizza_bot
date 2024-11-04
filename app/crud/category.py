@@ -2,17 +2,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .base import CRUDBase
-from app.models import Category
+from app.models.category import Category
 
 
 class CRUDCategory(CRUDBase):
 
-    async def create_categories(session: AsyncSession, categories: list):
-        query = select(Category)
+    async def create_categories(self, session: AsyncSession, categories: list):
+        query = select(self.model)
         result = await session.execute(query)
         if result.first():
             return
-        session.add_all([Category(name=name) for name in categories])
+        session.add_all([self.model(name=name) for name in categories])
         await session.commit()
 
 

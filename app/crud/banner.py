@@ -7,9 +7,9 @@ from app.models import Banner
 
 class CRUDBanner(CRUDBase):
 
-    async def create(
+    async def create_multiple(
             self,
-            obj_in,
+            obj_in: dict,
             session: AsyncSession,
     ):
         # Добавляем новый или изменяем существующий по именам
@@ -18,20 +18,10 @@ class CRUDBanner(CRUDBase):
         result = await session.execute(query)
         if result.first():
             return
-        session.add(self.model(**obj_in))
-        await session.commit()
-
-    async def update(
-            self,
-            *,
-            name: str,
-            image: str,
-            session: AsyncSession,
-    ):
-        query = update(self.model).where(
-            self.model.name == name
-        ).values(image=image)
-        await session.execute(query)
+        session.add_all([
+            self.model(name=name, description=description)
+            for name, description in obj_in.items()
+        ])
         await session.commit()
 
 
