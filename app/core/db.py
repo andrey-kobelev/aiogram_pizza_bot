@@ -35,5 +35,9 @@ async def create_db():
 
 async def import_data():
     async with AsyncSessionLocal() as session:
-        await category_crud.create_categories(session=session, categories=categories)
-        await banner_crud.create_multiple(session=session, obj_in=description_for_info_pages)
+        await category_crud.create_categories(
+            session=session, categories=categories
+        )
+        await banner_crud.create_multiple(
+            session=session, obj_in=description_for_info_pages
+        )

@@ -14,11 +14,10 @@ class CRUDCart(CRUDBase):
             user_id: int,
             product_id: int
     ):
-        query = select(self.model).where(
+        query = select(Cart).where(
             self.model.user_id == user_id,
-            Cart.product_id == product_id
-        ).options(
-            joinedload(self.model.product))
+            self.model.product_id == product_id
+        )
         cart = await session.execute(query)
         cart = cart.scalar()
         if cart:
@@ -26,7 +25,7 @@ class CRUDCart(CRUDBase):
             await session.commit()
             return cart
         else:
-            session.add(self.model(
+            session.add(Cart(
                 user_id=user_id,
                 product_id=product_id,
                 quantity=1
@@ -57,7 +56,7 @@ class CRUDCart(CRUDBase):
         await session.execute(query)
         await session.commit()
 
-    async def reduce_product_in_cart(
+    async def decrement_cart_product(
             self,
             session: AsyncSession,
             user_id: int,
@@ -65,7 +64,7 @@ class CRUDCart(CRUDBase):
     ):
         query = select(self.model).where(
             self.model.user_id == user_id,
-            Cart.product_id == product_id
+            self.model.product_id == product_id
         ).options(
             joinedload(self.model.product))
         cart = await session.execute(query)

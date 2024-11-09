@@ -13,7 +13,9 @@ class CRUDProduct(CRUDBase):
             category_id: int = None,
     ):
         if category_id:
-            db_objs = await session.execute(select(self.model).where(self.model.category_id == category_id))
+            db_objs = await session.execute(select(self.model).where(
+                self.model.category_id == category_id
+            ))
             return db_objs.scalars().all()
         return await super().get_multi(session=session)
 

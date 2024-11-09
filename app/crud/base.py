@@ -21,6 +21,18 @@ class CRUDBase:
         )
         return db_obj.scalars().first()
 
+    async def get_by_name(
+            self,
+            obj_name: str,
+            session: AsyncSession,
+    ):
+        db_obj = await session.execute(
+            select(self.model).where(
+                self.model.name == obj_name
+            )
+        )
+        return db_obj.scalars().first()
+
     async def get_multi(
             self,
             session: AsyncSession
