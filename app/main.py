@@ -5,6 +5,7 @@ import dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 
+from app.middlewares.db import CreateUserMiddleware
 from handlers import ROUTERS
 from middlewares.db import DBSession
 from core.db import AsyncSessionLocal, import_data
@@ -45,6 +46,8 @@ async def main():
     dispatcher.shutdown.register(on_shutdown_func)
 
     dispatcher.update.middleware(DBSession(async_session=AsyncSessionLocal))
+    dispatcher.message.middleware(CreateUserMiddleware())
+    dispatcher.callback_query.middleware(CreateUserMiddleware())
 
     # Перед запуском сбрасываем старые обновления и начнем пуллинг с новых.
     await bot.delete_webhook(drop_pending_updates=True)

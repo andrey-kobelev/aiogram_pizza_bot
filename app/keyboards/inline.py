@@ -11,6 +11,7 @@ class MenuCallBack(CallbackData, prefix='menu'):
     category_id: Optional[int] = None
     page: int = 1
     product_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 
 def get_main_keyboard(*, level: int, sizes: tuple[int] = (2,)):

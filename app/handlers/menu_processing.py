@@ -1,4 +1,3 @@
-from typing import Optional
 
 from aiogram.types import InputMediaPhoto
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,26 +7,23 @@ from app.keyboards.inline import (
     get_products_keyboard,
     get_main_keyboard,
     get_catalog_keyboard,
-    get_user_cart
+    get_user_cart, MenuCallBack
 )
 from app.utils.paginator import Paginator
 
 
-async def main_menu(session: AsyncSession, level: int, menu_name: str):
-    print()
-    print(f'{menu_name=}')
-    print()
-    banner = await banner_crud.get_by_name(obj_name=menu_name, session=session)
+async def main_menu(session: AsyncSession, data: MenuCallBack):
+    banner = await banner_crud.get_by_name(obj_name=data.menu_name, session=session)
     image = InputMediaPhoto(media=banner.image, caption=banner.description)
-    keyboard = get_main_keyboard(level=level)
+    keyboard = get_main_keyboard(level=data.level)
     return image, keyboard
 
 
-async def catalog(session: AsyncSession, level: int, menu_name: str):
-    banner = await banner_crud.get_by_name(obj_name=menu_name, session=session)
+async def catalog(session: AsyncSession, data: MenuCallBack):
+    banner = await banner_crud.get_by_name(obj_name=data.menu_name, session=session)
     image = InputMediaPhoto(media=banner.image, caption=banner.description)
     categories = await category_crud.get_multi(session=session)
-    keyboard = get_catalog_keyboard(level=level, categories=categories)
+    keyboard = get_catalog_keyboard(level=data.level, categories=categories)
     return image, keyboard
 
 
@@ -42,18 +38,13 @@ def get_next_previous_buttons(paginator: Paginator):
     return buttons
 
 
-async def products(
-        session: AsyncSession,
-        level: int,
-        category_id: int,
-        page: int
-):
+async def products(session: AsyncSession, data: MenuCallBack):
     products = await product_crud.get_multi(
         session=session,
-        category_id=category_id
+        category_id=data.category_id
     )
 
-    paginator = Paginator(products, page=page)
+    paginator = Paginator(products, page=data.page)
     product = paginator.get_page()[0]
 
     image = InputMediaPhoto(
@@ -69,9 +60,9 @@ async def products(
     next_previous_buttons = get_next_previous_buttons(paginator)
 
     kbds = get_products_keyboard(
-        level=level,
-        category_id=category_id,
-        page=page,
+        level=data.level,
+        category_id=data.category_id,
+        page=data.page,
         next_previous_buttons=next_previous_buttons,
         product_id=product.id,
     )
@@ -80,37 +71,32 @@ async def products(
 
 
 async def carts(
-        session: AsyncSession,
-        level: int,
-        menu_name: str,
-        page: int,
-        user_id: int,
-        product_id: int
+        session: AsyncSession, data: MenuCallBack
 ):
-    if menu_name == "delete":
+    if data.menu_name == "delete":
         await cart_crud.delete_from_cart(
             session=session,
-            user_id=user_id,
-            product_id=product_id
+            user_id=data.user_id,
+            product_id=data.product_id
         )
-        if page > 1:
-            page -= 1
-    elif menu_name == "decrement":
+        if data.page > 1:
+            data.page -= 1
+    elif data.menu_name == "decrement":
         is_cart = await cart_crud.decrement_cart_product(
             session=session,
-            user_id=user_id,
-            product_id=product_id
+            user_id=data.user_id,
+            product_id=data.product_id
         )
-        if page > 1 and not is_cart:
-            page -= 1
-    elif menu_name == "increment":
+        if data.page > 1 and not is_cart:
+            data.page -= 1
+    elif data.menu_name == "increment":
         await cart_crud.add_to_cart(
             session=session,
-            user_id=user_id,
-            product_id=product_id
+            user_id=data.user_id,
+            product_id=data.product_id
         )
 
-    carts = await cart_crud.get_user_carts(session=session, user_id=user_id)
+    carts = await cart_crud.get_user_carts(session=session, user_id=data.user_id)
 
     if not carts:
         banner = await banner_crud.get_by_name(
@@ -123,14 +109,14 @@ async def carts(
         )
 
         kbds = get_user_cart(
-            level=level,
+            level=data.level,
             page=None,
             pagination_btns=None,
             product_id=None,
         )
 
     else:
-        paginator = Paginator(carts, page=page)
+        paginator = Paginator(carts, page=data.page)
 
         cart = paginator.get_page()[0]
 
@@ -152,8 +138,8 @@ async def carts(
         pagination_btns = get_next_previous_buttons(paginator)
 
         kbds = get_user_cart(
-            level=level,
-            page=page,
+            level=data.level,
+            page=data.page,
             pagination_btns=pagination_btns,
             product_id=cart.product.id,
         )
@@ -163,57 +149,12 @@ async def carts(
 
 async def get_menu_content(
         session: AsyncSession,
-        level: int,
-        menu_name: str,
-        category_id: Optional[int] = None,
-        page: Optional[int] = None,
-        user_id: Optional[int] = None,
-        product_id: Optional[int] = None,
+        data: MenuCallBack
 ):
-    # levels = {
-    #     0: await main_menu(session, level, menu_name),
-    #     1: await catalog(session, level, menu_name),
-    #     2: await products(
-    #         session=session,
-    #         level=level,
-    #         category_id=category_id,
-    #         page=page
-    #     ),
-    #     3: await carts(
-    #         session=session,
-    #         level=level,
-    #         menu_name=menu_name,
-    #         page=page,
-    #         user_id=user_id,
-    #         product_id=product_id
-    #     )
-    # }
-    # return levels[level]
-    if level == 0:
-        return await main_menu(
-            session=session,
-            level=level,
-            menu_name=menu_name
-        )
-    elif level == 1:
-        return await catalog(
-            session=session,
-            level=level,
-            menu_name=menu_name
-        )
-    elif level == 2:
-        return await products(
-            session=session,
-            level=level,
-            category_id=category_id,
-            page=page
-        )
-    elif level == 3:
-        return await carts(
-            session=session,
-            level=level,
-            menu_name=menu_name,
-            page=page,
-            user_id=user_id,
-            product_id=product_id
-        )
+    levels = {
+        0: main_menu,
+        1: catalog,
+        2: products,
+        3: carts
+    }
+    return await levels[data.level](session=session, data=data)

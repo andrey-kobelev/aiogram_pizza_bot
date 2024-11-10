@@ -4,7 +4,11 @@ from typing import Sequence
 
 class Paginator:
 
-    def __init__(self, array: Sequence, page: int = 1, per_page: int = 1):
+    def __init__(
+            self, array: Sequence,
+            page: int = 1,
+            per_page: int = 1
+    ):
         self.array = array
         self.per_page = per_page
         self.page = page
@@ -18,8 +22,7 @@ class Paginator:
         return self.array[start:stop]
 
     def get_page(self):
-        page_items = self.__get_slice()
-        return page_items
+        return self.__get_slice()
 
     def has_next(self):
         if self.page < self.pages:
