@@ -13,12 +13,12 @@ from app.common import constants as button
 # Если судить по такой конструкции, то получится две строки по две кнопки.
 START_BUTTONS = [
     [
-        KeyboardButton(text=button.MENU.description),
-        KeyboardButton(text=button.ABOUT.description),
+        KeyboardButton(text=button.CATALOG.text),
+        KeyboardButton(text=button.ABOUT.text),
     ],
     [
-        KeyboardButton(text=button.SHIPPING.description),
-        KeyboardButton(text=button.PAYMENT.description),
+        KeyboardButton(text=button.SHIPPING.text),
+        KeyboardButton(text=button.PAYMENT.text),
     ]
 ]
 
@@ -57,7 +57,7 @@ start_kb_3.attach(start_kb_2)
 # start_kb_3.add(KeyboardButton(text=button.REVIEW.description))
 
 # Метод row добавит кнопку новым рядом.
-start_kb_3.row(KeyboardButton(text=button.REVIEW.description))
+start_kb_3.row(KeyboardButton(text=button.ABOUT.text))
 
 
 contact_location_kb = ReplyKeyboardMarkup(

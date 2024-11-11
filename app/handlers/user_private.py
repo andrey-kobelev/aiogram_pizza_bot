@@ -21,7 +21,7 @@ user_private_router.message.filter(
 
 @user_private_router.message(CommandStart())
 async def start_cmd(message: types.Message, session: AsyncSession):
-    data = MenuCallBack(level = 0, menu_name = 'main')
+    data = MenuCallBack(level=0, menu_name='main')
     media, reply_markup = await get_menu_content(
         session=session,
         data=data

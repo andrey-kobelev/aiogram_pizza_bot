@@ -1,4 +1,3 @@
-
 from aiogram.types import InputMediaPhoto
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,35 +6,29 @@ from app.keyboards.inline import (
     get_products_keyboard,
     get_main_keyboard,
     get_catalog_keyboard,
-    get_user_cart, MenuCallBack
+    get_user_cart_keyboard,
+    MenuCallBack
 )
 from app.utils.paginator import Paginator
 
 
 async def main_menu(session: AsyncSession, data: MenuCallBack):
-    banner = await banner_crud.get_by_name(obj_name=data.menu_name, session=session)
+    banner = await banner_crud.get_by_name(
+        obj_name=data.menu_name, session=session
+    )
     image = InputMediaPhoto(media=banner.image, caption=banner.description)
-    keyboard = get_main_keyboard(level=data.level)
+    keyboard = get_main_keyboard()
     return image, keyboard
 
 
 async def catalog(session: AsyncSession, data: MenuCallBack):
-    banner = await banner_crud.get_by_name(obj_name=data.menu_name, session=session)
+    banner = await banner_crud.get_by_name(
+        obj_name=data.menu_name, session=session
+    )
     image = InputMediaPhoto(media=banner.image, caption=banner.description)
     categories = await category_crud.get_multi(session=session)
-    keyboard = get_catalog_keyboard(level=data.level, categories=categories)
+    keyboard = get_catalog_keyboard(categories=categories)
     return image, keyboard
-
-
-def get_next_previous_buttons(paginator: Paginator):
-    buttons = dict()
-    if paginator.has_previous():
-        buttons["◀ Пред."] = "previous"
-
-    if paginator.has_next():
-        buttons["След. ▶"] = "next"
-
-    return buttons
 
 
 async def products(session: AsyncSession, data: MenuCallBack):
@@ -57,17 +50,15 @@ async def products(session: AsyncSession, data: MenuCallBack):
         ),
     )
 
-    next_previous_buttons = get_next_previous_buttons(paginator)
-
-    kbds = get_products_keyboard(
+    keyboard = get_products_keyboard(
         level=data.level,
         category_id=data.category_id,
         page=data.page,
-        next_previous_buttons=next_previous_buttons,
         product_id=product.id,
+        paginator=paginator
     )
 
-    return image, kbds
+    return image, keyboard
 
 
 async def carts(
@@ -96,7 +87,9 @@ async def carts(
             product_id=data.product_id
         )
 
-    carts = await cart_crud.get_user_carts(session=session, user_id=data.user_id)
+    carts = await cart_crud.get_user_carts(
+        session=session, user_id=data.user_id
+    )
 
     if not carts:
         banner = await banner_crud.get_by_name(
@@ -108,13 +101,11 @@ async def carts(
             caption=f"<strong>{banner.description}</strong>"
         )
 
-        kbds = get_user_cart(
+        kbds = get_user_cart_keyboard(
             level=data.level,
             page=None,
-            pagination_btns=None,
             product_id=None,
         )
-
     else:
         paginator = Paginator(carts, page=data.page)
 
@@ -135,13 +126,11 @@ async def carts(
             ),
         )
 
-        pagination_btns = get_next_previous_buttons(paginator)
-
-        kbds = get_user_cart(
+        kbds = get_user_cart_keyboard(
             level=data.level,
             page=data.page,
-            pagination_btns=pagination_btns,
             product_id=cart.product.id,
+            paginator=paginator
         )
 
     return image, kbds
