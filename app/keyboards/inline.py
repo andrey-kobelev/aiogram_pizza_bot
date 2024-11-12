@@ -242,7 +242,6 @@ def get_url_btns(
 
     for text, url in btns.items():
         keyboard.add(InlineKeyboardButton(text=text, url=url))
-
     return keyboard.adjust(*sizes).as_markup()
 
 
@@ -258,5 +257,4 @@ def get_inline_mix_btns(
             keyboard.add(InlineKeyboardButton(text=text, url=value))
         else:
             keyboard.add(InlineKeyboardButton(text=text, callback_data=value))
-
     return keyboard.adjust(*sizes).as_markup()

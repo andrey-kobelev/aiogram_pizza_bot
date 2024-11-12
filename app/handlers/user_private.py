@@ -8,6 +8,7 @@ from app.filters.chat_types import ChatTypeFilter
 from app.keyboards.inline import MenuCallBack
 from .menu_processing import get_menu_content
 
+
 # Список разрешенных типов чатов.
 CHAT_TYPES = [
     'private',

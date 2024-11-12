@@ -34,20 +34,20 @@ class Paginator:
             return self.page - 1
         return False
 
-    def get_next(self):
-        if self.page < self.pages:
-            self.page += 1
-            return self.get_page()
-        raise IndexError(
-            'Next page does not exist. '
-            'Use has_next() to check before.'
-        )
-
-    def get_previous(self):
-        if self.page > 1:
-            self.page -= 1
-            return self.__get_slice()
-        raise IndexError(
-            'Previous page does not exist. '
-            'Use has_previous() to check before.'
-        )
+    # def get_next(self):
+    #     if self.page < self.pages:
+    #         self.page += 1
+    #         return self.get_page()
+    #     raise IndexError(
+    #         'Next page does not exist. '
+    #         'Use has_next() to check before.'
+    #     )
+    #
+    # def get_previous(self):
+    #     if self.page > 1:
+    #         self.page -= 1
+    #         return self.__get_slice()
+    #     raise IndexError(
+    #         'Previous page does not exist. '
+    #         'Use has_previous() to check before.'
+    #     )
