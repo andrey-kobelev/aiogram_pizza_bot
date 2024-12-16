@@ -119,10 +119,10 @@ async def carts(
             media=cart.product.image,
             caption=(
                 f"<strong>{cart.product.name}</strong>\n"
-                f"{round(cart.product.price, 2)}$ "
-                f"x {cart.quantity} = {cart_price}$\n"
+                f"{round(cart.product.price, 2)}₽ "
+                f"x {cart.quantity} = {cart_price}₽\n"
                 f"Товар {paginator.page} из {paginator.pages} в корзине.\n"
-                f"Общая стоимость товаров в корзине {total_price}"
+                f"Общая стоимость товаров в корзине {total_price}₽"
             ),
         )
 
