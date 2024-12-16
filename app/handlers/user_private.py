@@ -45,6 +45,9 @@ async def user_menu(
         user_id=callback.from_user.id,
         session=session
     )
+    if callback_data.menu_name == 'order':
+        await callback.answer(text='Товар Заказан!', show_alert=True)
+        return
     if callback_data.menu_name == 'add_to_cart':
         await cart_crud.add_to_cart(
             user_id=db_user.user_id,
