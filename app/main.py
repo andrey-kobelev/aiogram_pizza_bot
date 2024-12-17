@@ -6,14 +6,16 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 
 from app.middlewares.db import CreateUserMiddleware
-from handlers import ROUTERS
-from middlewares.db import DBSession
-from core.db import AsyncSessionLocal, import_data
+from app.handlers import ROUTERS
+from app.middlewares.db import DBSession
+from app.core.db import AsyncSessionLocal, import_data
 
 
 dotenv.load_dotenv()
 
 TOKEN = os.getenv('BOT_TOKEN')
+DATABASE_URL = os.getenv('DATABASE_URL_AS_BOT')
+DATABASE_URL_AS_ALEMBIC = os.getenv('DATABASE_URL_AS_ALEMBIC')
 
 ALLOWED_UPDATES = ['message', 'edited_message', 'callback_query']
 
@@ -69,5 +71,4 @@ async def main():
     )
 
 
-if __name__ == '__main__':
-    asyncio.run(main())
+asyncio.run(main())
