@@ -10,7 +10,7 @@ from app.common.texts_for_db import categories, description_for_info_pages
 
 dotenv.load_dotenv()
 
-DATABASE_URL = os.getenv('DATABASE_URL_AS_BOT')
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 
 engine = create_async_engine(DATABASE_URL, echo=True)

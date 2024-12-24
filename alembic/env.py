@@ -18,7 +18,7 @@ dotenv.load_dotenv('.env')
 # access to the values within the .ini file in use.
 config = context.config
 # Установим для переменной sqlalchemy.url значение из нашего .env файла.
-config.set_main_option('sqlalchemy.url', os.environ['DATABASE_URL_AS_ALEMBIC'])
+config.set_main_option('sqlalchemy.url', os.environ['DATABASE_URL'])
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

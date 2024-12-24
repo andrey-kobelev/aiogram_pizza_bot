@@ -14,8 +14,7 @@ from app.core.db import AsyncSessionLocal, import_data
 dotenv.load_dotenv()
 
 TOKEN = os.getenv('BOT_TOKEN')
-DATABASE_URL = os.getenv('DATABASE_URL_AS_BOT')
-DATABASE_URL_AS_ALEMBIC = os.getenv('DATABASE_URL_AS_ALEMBIC')
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 ALLOWED_UPDATES = ['message', 'edited_message', 'callback_query']
 
