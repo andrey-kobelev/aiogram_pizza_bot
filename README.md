@@ -42,8 +42,7 @@ python -m app.main
 ```
 
 ### Автор 
-- Кобелев Андрей
-    - [email](mailto:andrew.a.kobelev@yandex.ru)
+- [Kobelev Andrey](mailto:andrew.a.kobelev@yandex.ru)
 
 
 > Проект писался на основе курса на PythonHub Studio
