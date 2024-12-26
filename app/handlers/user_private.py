@@ -1,5 +1,6 @@
 from aiogram import types, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, StateFilter
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +10,6 @@ from app.keyboards.inline import MenuCallBack
 from .menu_processing import get_menu_content
 
 
-# Список разрешенных типов чатов.
 CHAT_TYPES = [
     'private',
 ]
@@ -20,8 +20,13 @@ user_private_router.message.filter(
 )
 
 
-@user_private_router.message(CommandStart())
-async def start_cmd(message: types.Message, session: AsyncSession):
+@user_private_router.message(StateFilter('*'), CommandStart())
+async def start_cmd(
+        message: types.Message,
+        session: AsyncSession,
+        state: FSMContext
+):
+    await state.clear()
     data = MenuCallBack(level=0, menu_name='main')
     media, reply_markup = await get_menu_content(
         session=session,

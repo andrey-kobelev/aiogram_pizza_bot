@@ -18,20 +18,14 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 ALLOWED_UPDATES = ['message', 'edited_message', 'callback_query']
 
-# Класс самого бота - инициализация.
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 bot.admins = []
 
-# Обрабатывает все апдейты из сервера - всё что касается бота.
-# Отвечает за фильтрацию сообщений полученных с сервера.
-# PS:
-# В предыдущей версии нужно было передать объект бота.
 dispatcher = Dispatcher()
 dispatcher.include_routers(*ROUTERS)
 
 
 async def on_startup_func(bot: Bot):
-    # await create_db()
     print('Datas are importing..')
     await import_data()
     print('Datas were imported.')
@@ -50,22 +44,9 @@ async def main():
     dispatcher.message.middleware(CreateUserMiddleware())
     dispatcher.callback_query.middleware(CreateUserMiddleware())
 
-    # Перед запуском сбрасываем старые обновления и начнем пуллинг с новых.
     await bot.delete_webhook(drop_pending_updates=True)
-
-    # Настройка уделения пункта меню для последующего пересоздания.
-    # await bot.delete_my_commands(
-    #     scope=BotCommandScopeAllPrivateChats()
-    # )
-
-    # Здесь бот начнет слушать сервер ТГ,
-    # и спрашивать у него о наличии обновлений.
     await dispatcher.start_polling(
         bot,
-        # allowed_updates=ALLOWED_UPDATES,
-        # Что-бы не прописывать каждый тип апдейта.
-        # Те апдейты которые мы используем -
-        # автоматически будут передаваться сюда.
         allowed_updates=dispatcher.resolve_used_update_types()
     )
 
